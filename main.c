@@ -2,9 +2,9 @@
 #include <math.h>
 #include <stdlib.h>
 
-int INPUTSIZE = 2;
-int HIDDENSIZE = 6;
-int OUTSIZE = 1;
+int INPUTSIZE = 784;
+int HIDDENSIZE = 60;
+int OUTSIZE = 10;
 
 // sigmoid: function used to take sigmoid of only input: x
 float sigmoid(float x) {
@@ -236,9 +236,9 @@ int main() {
     float hiddenTwoLayerBias[HIDDENSIZE];
     float outputLayerBias[OUTSIZE];
 
-    float lr = 0.2;
-    int epochs = 12000;
-    static const int amountOfData = 4;
+    float lr = 0.3;
+    int epochs = 1200;
+    static const int amountOfData = 30000;
 
     // iniate hidden layer weights and biases
     iniateWeigts(hiddenLayerWeights, (INPUTSIZE * HIDDENSIZE));
@@ -248,15 +248,22 @@ int main() {
     iniateWeigts(outLayerWights, (HIDDENSIZE * OUTSIZE));
     iniateWeigts(outputLayerBias, (OUTSIZE));
 
+    int test2;
+
     float test[4*2] = { 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0};
     float inputCorrect[4] = {0.0,1.0,1.0,0.0}; 
 
     
     for(int i = 0; i < epochs; i++) {
+        srand(i);
+        int testPos = rand() % amountOfData;
 
         for(int j = 0; j < amountOfData; j++) {
+            if(testPos >= amountOfData) {
+                testPos = 0;
+            }
 
-            fillInputLayer(test, inputLayer, INPUTSIZE, j);
+            fillInputLayer(inputArr, inputLayer, INPUTSIZE, testPos);
             // printArray(inputLayer, (INPUTSIZE));
 
             // Pass input layer values to hidden layer after activation function
@@ -269,26 +276,80 @@ int main() {
             float deltaTwoHidden[HIDDENSIZE];
             float deltaOneHidden[HIDDENSIZE];
 
-            outError(deltaOut,inputCorrect,outLayer,OUTSIZE, j);
-            hiddenError(deltaTwoHidden, deltaOut, hiddenTwoLayer, outLayerWights, HIDDENSIZE, OUTSIZE);
-            hiddenError(deltaOneHidden, deltaTwoHidden, hiddenOneLayer, hiddenTwoLayerWeights, HIDDENSIZE, HIDDENSIZE);
+            for(int z = 0; z < OUTSIZE; z++) {
+                deltaOut[z] = outLayer[z] * (1 - outLayer[z]) * (outLayer[z] - correctData[z + OUTSIZE * testPos]);
+            }
 
-            backProp(outputLayerBias, deltaOut, outLayerWights, hiddenTwoLayer, lr, OUTSIZE, HIDDENSIZE);
-            backProp(hiddenTwoLayer, deltaTwoHidden, hiddenTwoLayerWeights, hiddenOneLayer, lr, HIDDENSIZE, HIDDENSIZE);
-            backProp(hiddenLayerBias, deltaOneHidden, hiddenLayerWeights, inputLayer, lr, HIDDENSIZE, INPUTSIZE);
+            for(int z = 0; z < HIDDENSIZE; z++) {
+                float error = 0.0;
+                for(int x = 0; x < OUTSIZE; x++) {
+                    error += (outLayerWights[x + z * OUTSIZE] * deltaOut[x]);
+                }
+                deltaTwoHidden[z] = error * hiddenTwoLayer[z] * (1 - hiddenTwoLayer[z]);
+            }
+
+            for(int z = 0; z < HIDDENSIZE; z++) {
+                float error = 0.0;
+                for(int x = 0; x < HIDDENSIZE; x++) {
+                    error += (hiddenTwoLayerWeights[x + z * HIDDENSIZE] * deltaTwoHidden[x]);
+                }
+                deltaOneHidden[z] = error * hiddenOneLayer[z] * (1 - hiddenOneLayer[z]);
+            }
+
+
+
+
+            for(int z = 0; z < OUTSIZE; z++) {
+                outputLayerBias[z] = outputLayerBias[z] - (lr * deltaOut[z]);
+                for(int x = 0; x < HIDDENSIZE; x ++) {
+                    outLayerWights[x + z * HIDDENSIZE] = outLayerWights[x + z * HIDDENSIZE] - (lr * deltaOut[z]) * hiddenTwoLayer[x];
+                }
+            }
+
+
+            for(int z = 0; z < HIDDENSIZE; z++) {
+                hiddenTwoLayerBias[z] = hiddenTwoLayerBias[z] - (lr * deltaTwoHidden[z]);
+                for(int x = 0; x < HIDDENSIZE; x ++) {
+                    hiddenTwoLayerWeights[x + z * HIDDENSIZE] = hiddenTwoLayerWeights[x + z * HIDDENSIZE] - (lr * deltaTwoHidden[z]) * hiddenOneLayer[x];
+                }
+            }
+
+            for(int z = 0; z < HIDDENSIZE; z++) {
+                hiddenLayerBias[z] = hiddenLayerBias[z] - (lr * deltaOneHidden[z]);
+                for(int x = 0; x < INPUTSIZE; x ++) {
+                    hiddenLayerWeights[x + z * INPUTSIZE] = hiddenLayerWeights[x + z * INPUTSIZE] - (lr * deltaOneHidden[z]) * inputLayer[x];
+                }
+            }
+
+            // outError(deltaOut,inputCorrect,outLayer,OUTSIZE, j);
+            // hiddenError(deltaTwoHidden, deltaOut, hiddenTwoLayer, outLayerWights, HIDDENSIZE, OUTSIZE);
+            // hiddenError(deltaOneHidden, deltaTwoHidden, hiddenOneLayer, hiddenTwoLayerWeights, HIDDENSIZE, HIDDENSIZE);
+
+            // backProp(outputLayerBias, deltaOut, outLayerWights, hiddenTwoLayer, lr, OUTSIZE, HIDDENSIZE);
+            // backProp(hiddenTwoLayer, deltaTwoHidden, hiddenTwoLayerWeights, hiddenOneLayer, lr, HIDDENSIZE, HIDDENSIZE);
+            // backProp(hiddenLayerBias, deltaOneHidden, hiddenLayerWeights, inputLayer, lr, HIDDENSIZE, INPUTSIZE);
             
-            printArray(outLayer, (OUTSIZE));
-            printf("Correct awnser: %f", inputCorrect[j]);
-            printf("\n");
+            // printArray(outLayer, (OUTSIZE));
+            // printf("Correct awnser: %f", correctInput[j]);
+            // printf("\n");
             // printArray(correctData + (j*10), OUTSIZE);
-            // for(int z = 0; z < 784; z++) {
+            // for(int z = 0; z < INPUTSIZE; z++) {
             //     if(z % 28 == 0) { printf("\n"); }
             //     printf("%d ", (int)inputLayer[z]);
             // }
             // printf("\n");
             // printf("\n");
-
+            test2 = testPos;
         }
+        printArray(outLayer, (OUTSIZE));
+        printf("Correct awnser: %f", correctInput[test2]);
+        printf("\n");
+        printArray(correctData + (test2*10), OUTSIZE);
+        for(int z = 0; z < INPUTSIZE; z++) {
+            if(z % 28 == 0) { printf("\n"); }
+            printf("%d ", (int)inputLayer[z]);
+        }
+        printf("\n");
     }
     free(inputArr);
     free(correctInput);
