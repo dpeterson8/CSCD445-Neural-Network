@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
+#include <time.h>
 
-int INPUTSIZE = 2;
-int HIDDENSIZE = 4;
-int OUTSIZE = 1;
+int INPUTSIZE = 784;
+int HIDDENSIZE = 60;
+int OUTSIZE = 10;
 
 // sigmoid: function used to take sigmoid of only input: x
 float sigmoid(float x) {
@@ -41,23 +42,6 @@ void printArray(float * array, int size){
 
 }
 
-// float calcError(float * deltaOut, float * deltaHidden, float * outWeights, float * hiddenLayer, float * outLayer, float ** correctInput) {
-    
-//     for(int t = 0; t < OUTSIZE; t++) {
-//         float error = correctInput[j][t] - outLayer[t];
-//         deltaOut[t] = error * dSigmoid(outLayer[t]);
-//     }
-
-//     for(int t = 0; t < HIDDENSIZE; t++) {
-//         float error = 0.0;
-//         for(int n = 0; n <OUTSIZE; n++) {
-//             error+=deltaOut[n] * outWeights[n + t * HIDDENSIZE];
-//         }
-//         deltaHidden[t] = error * dSigmoid(hiddenLayer[t]);
-//     }
-
-// }
-
 /*
     activateLayers: This function will take the current active layer and apply the
         activation function which is:
@@ -82,6 +66,15 @@ void activateLayers( float * inputLayer, float * nextLayer, float * nextWeights,
 
 }
 
+/*
+    fillInputLayer: This function will populate the input layer with a given array at a given postion. 
+                        The input layer will take the same amount of data as there is input nodes.
+    params:
+        input -- Given input to fill the input layer
+        inputLayer -- Input layer to be populated with data
+        inputSize -- Size of input layer used to get set amount of data from input
+        position -- Position of current input array
+*/
 void fillInputLayer(float * input, float * inputLayer, int inputSize, int position) {
     int sizeOfLayer = (sizeof(inputLayer)/sizeof(inputLayer[0]));
 
@@ -90,36 +83,171 @@ void fillInputLayer(float * input, float * inputLayer, int inputSize, int positi
         return;
     }
 
-    for(int i = 0; i < sizeOfLayer; i++) {
+    for(int i = 0; i < inputSize; i++) {
         inputLayer[i] = input[i + inputSize * position];
     }
 
 }
 
+/*
+    getMnist: This function will take the "mnist_train.scv" file and spilt the data within
+                into two arrays the input for the network and the current inputs correct output.
+    params: 
+        inputArr -- Array to be populated with input data
+        correctInput -- Array that carrys expected output of current input
+*/
+void getMnist(float * inputArr, float * correctInput) {
+        FILE* ptr;
+    int ch;
+    int symb;
+    int prevSymb = 44;
+    int inputIndex = 0;
+    int correctIndex = 0;
+    int currentPixel = 0;
+
+    ptr = fopen("mnist_train.csv", "r");
+
+    while ( ( symb = getc( ptr ) ) != EOF && symb != 10) {  }
+
+    while ( ( symb = getc( ptr ) ) != EOF && inputIndex < (784*60000)) {
+        ch = symb - 48;
+        // printf("%d ", symb);
+
+        if(symb >= 48 && symb <= 57) {
+            ch = symb - 48;
+
+            if(prevSymb >= 48 && prevSymb <= 57) {
+                inputIndex--;
+                inputArr[inputIndex] = (inputArr[inputIndex] * 10) + ch;
+                inputIndex++;
+            } else {
+
+                if(currentPixel % 785 == 0) {
+                    // printf("%d ", symb-48);
+                    correctInput[correctIndex] = ch;
+                    correctIndex++; 
+                    currentPixel++;
+                } else {
+                    inputArr[inputIndex] = ch;    
+                    currentPixel++;
+                    inputIndex++;
+                } 
+
+            // increase index counter
+            // printf("%d ", symb - 48);
+            }
+
+            // inputIndex++;
+        }
+
+        prevSymb = symb;
+    }
+    fclose(ptr);
+}
+
+/*
+    outError: This function will calculate the given error based off of the output nodes and expected output.
+    
+    params:
+        deltaOut -- The array used to store the calculated errors
+        correctInput -- The array mathing the expected results of the output layer
+        outLayer -- The output layer
+        outSize -- Size of output layer
+        dataPosition -- Position of expected output array
+*/
+void outError(float * deltaOut, float * correctInput, float * outLayer, int outSize, int dataPosition) {
+    for(int i = 0; i < outSize; i++) {
+        deltaOut[i] = outLayer[i] * (1 - outLayer[i]) * (outLayer[i] - correctInput[i + outSize * dataPosition]);
+    }
+
+}
+
+/*
+    outError: This function will calculate the given error based off of the two hidden layers or input and hidden 
+    
+    params:
+        deltaCurrem -- The array used to store the calculated errors
+        deltaPrec -- The array holding errors from the last calculated layer
+        currentLayer -- Current layer being traversed
+        prevLayerWeight -- Weights of the previous layer ex: layer 2 active, then prevLayer = hiden layer 1
+        curSize -- Size of current layer
+        prevSize -- Size of previous layer
+*/
+void hiddenError(float * deltaCurrent, float * deltaPrev, float * currentLayer, float * prevLayerWeight, int curSize, int prevSize) {
+    for(int i = 0; i < curSize; i++) {
+        float error = 0.0;
+        for(int j = 0; j < prevSize; j++) {
+            error += (prevLayerWeight[j + i * prevSize] * deltaPrev[j]);
+        }
+        deltaCurrent[i] = error * currentLayer[i] * (1 - currentLayer[i]);
+    }
+}
+
+/*
+    backProp: This function will work backwords on the network and apply the calculated errors to adjust the 
+                current weights and biases.
+    params:
+        curBias -- Bias array at current layer
+        deltaCur -- Error according to current layer
+        curWeights -- Weights array at current layer
+        prevLayer -- Previous layer array
+        learnRate -- Rate at which the network will learn at or increase/decrease weights and biases
+        curSize -- Size of current layer
+        prevSize -- Size of previous layer
+*/
+void backProp(float * curBias, float * deltaCur, float * curWeights, float * prevLayer, float learnRate, int curSize, int prevSize) {
+    for(int i = 0; i < curSize; i++) {
+        curBias[i] = curBias[i] - (learnRate * deltaCur[i]);
+        for(int j = 0; j < prevSize; j ++) {
+            curWeights[j + i * prevSize] = curWeights[j + i * prevSize] - (learnRate * deltaCur[i]) * prevLayer[j];
+        }
+    }  
+
+    // for(int z = 0; z < OUTSIZE; z++) {
+    //     outputLayerBias[z] = outputLayerBias[z] - (lr * deltaOut[z]);
+    //     for(int x = 0; x < HIDDENSIZE; x ++) {
+    //         outLayerWights[x + z * HIDDENSIZE] = outLayerWights[x + z * HIDDENSIZE] - (lr * deltaOut[z]) * hiddenTwoLayer[x];
+    //     }
+    // }
+}
+
 int main() {
+    __time_t t;
+    srand((unsigned) time(NULL));
+
+    float * inputArr = malloc(sizeof(float) * 784 * 60000);
+    float * correctInput = malloc(sizeof(float) * 60000);
+
+    getMnist(inputArr, correctInput);
+
+    float * correctData = (malloc(sizeof(float) * 60000 * 10));
+
+    for(int s = 0; s < 60000; s++) {
+        for(int t = 0; t < 10; t++) {
+            if(t == correctInput[s]) {
+                correctData[s * (10) + t] = 1.0;
+            } else {
+                correctData[s * (10) + t] = 0.0;
+            }
+        }
+    }
     
     float inputLayer[INPUTSIZE];
     float hiddenOneLayer[HIDDENSIZE];
+    float hiddenTwoLayer[HIDDENSIZE];
     float outLayer[OUTSIZE];
 
     float hiddenLayerWeights[INPUTSIZE * HIDDENSIZE];
+    float hiddenTwoLayerWeights[INPUTSIZE * HIDDENSIZE];
     float outLayerWights[HIDDENSIZE * OUTSIZE];
 
     float hiddenLayerBias[HIDDENSIZE];
+    float hiddenTwoLayerBias[HIDDENSIZE];
     float outputLayerBias[OUTSIZE];
 
-    float lr = 0.1;
-    int epochs = 10000;
-    static const int amountOfData = 4;
-    // float test[4][2] = { {0.0, 0.0}, {1.0, 0.0}, {0.0, 1.0}, {1.0, 1.0}};
-    // float inputCorrect[4][1] = {{0.0},{1.0},{1.0},{0.0}}; 
-
-    float test[4*2] = { 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0};
-    float inputCorrect[4] = {0.0,1.0,1.0,0.0}; 
-
-
-    // fillInputLayer(test[1], inputLayer);
-    // printArray(inputLayer, (INPUTSIZE));
+    float lr = 0.3;
+    int epochs = 1200;
+    static const int amountOfData = 30000;
 
     // iniate hidden layer weights and biases
     iniateWeigts(hiddenLayerWeights, (INPUTSIZE * HIDDENSIZE));
@@ -129,65 +257,51 @@ int main() {
     iniateWeigts(outLayerWights, (HIDDENSIZE * OUTSIZE));
     iniateWeigts(outputLayerBias, (OUTSIZE));
 
-    // printArray(hiddenLayerWeights, (INPUTSIZE * HIDDENSIZE));
+    int test2;
+
+    float test[4*2] = { 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0};
+    float inputCorrect[4] = {0.0,1.0,1.0,0.0}; 
+
     
     for(int i = 0; i < epochs; i++) {
+        int testPos = rand() % amountOfData;
 
         for(int j = 0; j < amountOfData; j++) {
+            if(testPos >= amountOfData) {
+                testPos = 0;
+            }
 
-            fillInputLayer(test, inputLayer, INPUTSIZE, j);
-            printArray(inputLayer, (INPUTSIZE));
+            fillInputLayer(inputArr, inputLayer, INPUTSIZE, testPos);
 
-            // Pass input layer values to hidden layer after activation function
             activateLayers(inputLayer, hiddenOneLayer, hiddenLayerWeights, hiddenLayerBias, INPUTSIZE, HIDDENSIZE);
-            // printf("\nHidden Layer: ");
-            // printArray(hiddenOneLayer, (HIDDENSIZE));
-            
-            // Pass hidden layer values to out layer after activation function
-            activateLayers(hiddenOneLayer, outLayer, outLayerWights, outputLayerBias, HIDDENSIZE, OUTSIZE);
-            // printf("\n");
-            // printArray(outLayer, (OUTSIZE));
-            // printf("\n");
+            activateLayers(hiddenOneLayer, hiddenTwoLayer, hiddenTwoLayerWeights, hiddenTwoLayerBias, HIDDENSIZE, HIDDENSIZE);
+            activateLayers(hiddenTwoLayer, outLayer, outLayerWights, outputLayerBias, HIDDENSIZE, OUTSIZE);
+
 
             float deltaOut[OUTSIZE];
-            for(int t = 0; t < OUTSIZE; t++) {
-                // float error = inputCorrect[j * OUTSIZE + t] - outLayer[t];
-                deltaOut[t] = (inputCorrect[j * OUTSIZE + t] - outLayer[t]) * dSigmoid(outLayer[t]);
-            }
+            float deltaTwoHidden[HIDDENSIZE];
+            float deltaOneHidden[HIDDENSIZE];
 
-            float deltaHidden[HIDDENSIZE];
-            for(int t = 0; t < HIDDENSIZE; t++) {
-                float error = 0.0;
-                for(int n = 0; n <OUTSIZE; n++) {
-                    error+=deltaOut[n] * outLayerWights[n + t * HIDDENSIZE];
-                }
-                deltaHidden[t] = error * dSigmoid(hiddenOneLayer[t]);
-            }
+            outError(deltaOut, correctData, outLayer, OUTSIZE, testPos);
+            hiddenError(deltaTwoHidden, deltaOut, hiddenTwoLayer, outLayerWights, HIDDENSIZE, OUTSIZE);
+            hiddenError(deltaOneHidden, deltaTwoHidden, hiddenOneLayer, hiddenTwoLayerWeights, HIDDENSIZE, HIDDENSIZE);
 
-            // calcError(deltaOut, deltaHidden, outLayerWights, hiddenOneLayer, outLayer, inputCorrect);
-
-            for(int t = 0; t < OUTSIZE; t++) {
-                outputLayerBias[t] += deltaOut[t] * lr;
-                for(int n = 0; n < HIDDENSIZE; n++) {
-                    outLayerWights[n + t * HIDDENSIZE] += hiddenOneLayer[n]*deltaOut[t]*lr;
-                }               
-            }
-
-
-            for(int t = 0; t < HIDDENSIZE; t++) {
-                hiddenLayerBias[t] += deltaHidden[t] * lr;
-                for(int n = 0; n < INPUTSIZE; n++) {
-                    hiddenLayerWeights[n + t * INPUTSIZE] += inputLayer[n]*deltaHidden[t]*lr;
-                }               
-            }
-
-            printArray(outLayer, (OUTSIZE));
-            printf("\n");
-
+            backProp(outputLayerBias, deltaOut, outLayerWights, hiddenTwoLayer, lr, OUTSIZE, HIDDENSIZE);
+            backProp(hiddenTwoLayer, deltaTwoHidden, hiddenTwoLayerWeights, hiddenOneLayer, lr, HIDDENSIZE, HIDDENSIZE);
+            backProp(hiddenLayerBias, deltaOneHidden, hiddenLayerWeights, inputLayer, lr, HIDDENSIZE, INPUTSIZE);
+            
+            test2 = testPos;
         }
+        printArray(outLayer, (OUTSIZE));
+        printf("Correct awnser: %f", correctInput[test2]);
+        printf("\n");
+        printArray(correctData + (test2*10), OUTSIZE);
+        for(int z = 0; z < INPUTSIZE; z++) {
+            if(z % 28 == 0) { printf("\n"); }
+            printf("%d ", (int)inputLayer[z]);
+        }
+        printf("\n");
     }
-
-    // float * deltaOut[OUTSIZE];
-    // float * delatHidden[HIDDENSIZE];
-    
+    free(inputArr);
+    free(correctInput);
 }
