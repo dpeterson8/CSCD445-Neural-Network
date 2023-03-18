@@ -30,9 +30,9 @@ int main() {
     __time_t t;
     srand((unsigned) time(NULL));
 
-    float * inputArr = malloc(sizeof(float) * 784 * 60000);
-    float * correctInput = malloc(sizeof(float) * 60000);
-    float * correctData = (malloc(sizeof(float) * 60000 * 10));
+    float * inputArr = (float *) malloc(sizeof(float) * 784 * 60000);
+    float * correctInput = (float *) malloc(sizeof(float) * 60000);
+    float * correctData = (float *) (malloc(sizeof(float) * 60000 * 10));
 
     getMnistTrain(inputArr, correctInput, correctData, 1);
     

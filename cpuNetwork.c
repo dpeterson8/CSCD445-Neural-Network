@@ -96,6 +96,12 @@ void outError(float * deltaOut, float * correctInput, float * outLayer, int outS
 
 }
 
+void testOutError(float * deltaOut, float * correctInput, float * outLayer, int outSize, int dataPosition) {
+    for(int i = 0; i < outSize; i++) {
+        deltaOut[i] = (correctInput[i] - outLayer[i]) * dSigmoid(outLayer[i]);
+    }
+
+}
 
 /*
     outError: This function will calculate the given error based off of the two hidden layers or input and hidden 
@@ -118,6 +124,15 @@ void hiddenError(float * deltaCurrent, float * deltaPrev, float * currentLayer, 
     }
 }
 
+void testHiddenError(float * deltaCurrent, float * deltaPrev, float * currentLayer, float * prevLayerWeight, int curSize, int prevSize) {
+    for(int i = 0; i < curSize; i++) {
+        float error = 0.0;
+        for(int j = 0; j < prevSize; j++) {
+            error += (prevLayerWeight[j + i * prevSize] * deltaPrev[j]);
+        }
+        deltaCurrent[i] = error * dSigmoid(currentLayer[i]);
+    }
+}
 
 
 /*
@@ -139,4 +154,13 @@ void backProp(float * curBias, float * deltaCur, float * curWeights, float * pre
             curWeights[j + i * prevSize] = curWeights[j + i * prevSize] - (learnRate * deltaCur[i]) * prevLayer[j];
         }
     } 
+}
+
+void testBackProp(float * curBias, float * deltaCur, float * curWeights, float * prevLayer, float learnRate, int curSize, int prevSize) {
+    for(int i = 0; i < curSize; i++) {
+        curBias[i] = curBias[i] - (learnRate * deltaCur[i]);
+        for(int j = 0; j < prevSize; j ++) {
+            curWeights[j + i * prevSize] += learnRate * deltaCur[i] * prevLayer[j];
+        }
+    }  
 }
