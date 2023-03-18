@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "mnistfileutils.h": "c",
+        "cpunetwork.h": "c"
+    }
+}
