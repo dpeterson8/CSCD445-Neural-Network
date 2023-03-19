@@ -2,9 +2,11 @@
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
+#include <cuda.h>
 #include "mnistFileUtils.h"
 #include "cpuNetwork.h"
 #include "arrayUtils.h"
+
 
 int INPUTSIZE = 2;
 int HIDDENSIZE = 6;
@@ -26,6 +28,57 @@ void testNetwork(int amountOfData, float * inputLayer, float * firstHidden, floa
     activateLayers(secondHidden, outLayer, outWeights, outBias, HIDDENSIZE, OUTSIZE);
 }
 
+void trainNetwork(float * layer, float * weights, float * biases, float * input, float * correctInput, int amountOfData, int inSize, int hiddenSize, int outSize, int epochs, float learnRate) {
+        for(int i = 0; i < epochs; i++) {
+        // totalCorrectPasses = 0;
+        // int testPos = rand() % amountOfData;
+        // randomizeArray(inputArr, correctData, 60000);
+        int testPos = 0;
+        for(int j = 0; j < amountOfData; j++) {
+            int testPos = rand() % amountOfData;
+            // int testPos = j;
+            if(testPos > amountOfData) {
+                testPos = 0;
+            }
+
+            fillInputLayer(input, layer, inSize, testPos);
+
+            activateLayers( layer, (layer + inSize), weights, biases, inSize, hiddenSize);
+            activateLayers((layer + inSize), (layer+inSize+hiddenSize), (weights+(inSize * hiddenSize)), (biases+hiddenSize), hiddenSize, hiddenSize);
+            activateLayers((layer+inSize+hiddenSize), (layer+inSize+(hiddenSize*2)), (weights+(inSize * hiddenSize * 2)), (biases+(hiddenSize*2)), HIDDENSIZE, OUTSIZE);
+
+            float deltaOut[OUTSIZE];
+            float deltaTwoHidden[HIDDENSIZE];
+            float deltaOneHidden[HIDDENSIZE];
+
+
+            outError(deltaOut, correctInput, (layer+inSize+(hiddenSize*2)), outSize, testPos);
+            hiddenError(deltaTwoHidden, deltaOut, (layer+inSize+hiddenSize), (weights+(inSize * hiddenSize * 2)), HIDDENSIZE, OUTSIZE);
+            hiddenError(deltaOneHidden, deltaTwoHidden, (layer + inSize), (weights+(inSize * hiddenSize)), HIDDENSIZE, HIDDENSIZE);
+
+            backProp((biases+(hiddenSize*2)), deltaOut, (weights+(inSize * hiddenSize * 2)), (layer+inSize+(hiddenSize)), learnRate, OUTSIZE, HIDDENSIZE);
+            backProp((biases+hiddenSize), deltaTwoHidden, (weights+(inSize * hiddenSize)), (layer + inSize), learnRate, HIDDENSIZE, HIDDENSIZE);
+            backProp(biases, deltaOneHidden, weights, layer, learnRate, HIDDENSIZE, INPUTSIZE);
+            
+            // test2 = testPos;
+
+            // totalCorrect(outLayer, inputCorrect, totalCorrectPasses, OUTSIZE);
+        }
+        printArray(layer, (INPUTSIZE));
+        printArray(layer+inSize+(hiddenSize*2), (OUTSIZE));
+        // printf(" Total: %d", totalCorrectPasses);
+        // double acc = (totalCorrect/(epochs*amountOfData));
+        // printf(" Accuracy: %f", acc);
+        // printf("\n");
+        // printArray(correctData + (test2*10), OUTSIZE);
+        // for(int z = 0; z < INPUTSIZE; z++) {
+        //     if(z % 28 == 0) { printf("\n"); }
+        //     printf("%d ", (int)inputLayer[z]);
+        // }
+        printf("\n");
+        }
+}
+
 int main() {
     __time_t t;
     srand((unsigned) time(NULL));
@@ -41,6 +94,10 @@ int main() {
     float hiddenTwoLayer[HIDDENSIZE];
     float outLayer[OUTSIZE];
 
+    float layers[INPUTSIZE + (HIDDENSIZE * 2) + OUTSIZE];
+    float weights[(INPUTSIZE * HIDDENSIZE * 2) + (OUTSIZE * HIDDENSIZE)];
+    float biases[(HIDDENSIZE * 2) + OUTSIZE];
+
     float hiddenLayerWeights[INPUTSIZE * HIDDENSIZE];
     float hiddenTwoLayerWeights[INPUTSIZE * HIDDENSIZE];
     float outLayerWights[HIDDENSIZE * OUTSIZE];
@@ -53,6 +110,9 @@ int main() {
     float lr = 0.2;
     int epochs = 20000;
     static const int amountOfData = 8;
+
+    iniateWeigts(weights, (INPUTSIZE * HIDDENSIZE * 2) + (OUTSIZE * HIDDENSIZE));
+    iniateWeigts(biases, (HIDDENSIZE * 2) + OUTSIZE);
 
     // iniate hidden layer weights and biases
     iniateWeigts(hiddenLayerWeights, (INPUTSIZE * HIDDENSIZE));
@@ -120,6 +180,8 @@ int main() {
         printf("\n");
 
     }
+
+    trainNetwork(layers, weights, biases, test, inputCorrect, amountOfData, INPUTSIZE, HIDDENSIZE, OUTSIZE, epochs, lr);
     free(inputArr);
     free(correctInput);
 
