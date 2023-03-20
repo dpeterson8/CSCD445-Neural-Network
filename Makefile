@@ -1,9 +1,8 @@
 NVCC = /bin/nvcc
 CC = g++
 
-GPUOBJS = main.o gpuNetwork.o
-OBJS = cpuNetwork.o arrayUtils.o mnistFileUtils.o
-
+GPUOBJS = main.o gpuNetwork.o 
+OBJS = cpuNetwork.o arrayUtils.o
 
 network:$(OBJS) $(GPUOBJS)
 	$(NVCC) -arch=sm_52 -o network $(OBJS) $(GPUOBJS)
@@ -20,8 +19,6 @@ cpuNetwork.o: cpuNetwork.c
 arrayUtils.o: arrayUtils.c
 	$(CC) -c arrayUtils.c
 
-mnistFileUtils.o: mnistFileUtils.c
-	$(CC) mnistFileUtils.c
 
 clean:
 	rm -f *.o

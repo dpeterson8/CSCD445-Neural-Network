@@ -3,14 +3,14 @@
 #include <stdlib.h>
 #include <time.h>
 #include <cuda.h>
-#include "mnistFileUtils.h"
+// #include "mnistFileUtils.h"
 #include "cpuNetwork.h"
 #include "arrayUtils.h"
 
 #include "gpuNetwork.h"
 
 int INPUTSIZE = 2;
-int HIDDENSIZE = 4;
+int HIDDENSIZE = 2;
 int OUTSIZE = 1;
 
 
@@ -55,7 +55,7 @@ int main() {
 
 
     int totalCorrectPasses = 0;
-    float lr = 0.2;
+    float lr = 0.3;
     int epochs = 20000;
     static const int amountOfData = 8;
 
@@ -70,18 +70,69 @@ int main() {
     iniateWeigts(outLayerWights, (HIDDENSIZE * OUTSIZE));
     iniateWeigts(outputLayerBias, (OUTSIZE));
 
-    for(int i = 0; i < epochs; i++) {
+    float * d_input;
+    size_t d_input_size = sizeof(float) * amountOfData;
 
-        for(int j = 0; j < amountOfData; j++) {
-            int testPos = rand() % amountOfData;
+    float * d_input_layer;
+    size_t d_inputLayer_size = sizeof(float) * INPUTSIZE;
 
-            if(testPos >= amountOfData) {
-                testPos = 0;
-            }
+    float * d_hLayerOne;
+    float * d_hLayerTwo;
+    float * d_outLayer;
 
-        }
+    float * d_fWeights;
+    float * d_outWeights;
 
-    }
+    float * d_fBias;
+    float * d_outBias;
+
+    int hiddenLayerSize = sizeof(float) * HIDDENSIZE;
+    int outLayerSize = sizeof(float) * OUTSIZE;
+
+    int hiddenWeightSize = sizeof(float) * HIDDENSIZE * INPUTSIZE;
+
+    cudaMalloc((void**)&d_input, d_input_size);
+    cudaMalloc((void**)&d_input_layer, d_inputLayer_size);
+    cudaMalloc((void**)&d_fWeights, hiddenWeightSize);
+    cudaMalloc((void**)&d_fBias, (sizeof(float) * HIDDENSIZE));
+    cudaMalloc((void**)&d_hLayerOne, hiddenLayerSize);
+    cudaMalloc((void**)&d_hLayerTwo, hiddenLayerSize);
+    cudaMalloc((void**)&d_outWeights, (sizeof(float) * HIDDENSIZE * OUTSIZE));
+    cudaMalloc((void**)&d_outBias, (sizeof(float) * OUTSIZE));
+    cudaMalloc((void**)&d_outLayer, outLayerSize);    
+
+    cudaMemcpy(d_input, test, d_input_size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_fWeights, hiddenLayerWeights, hiddenLayerSize, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_fBias, hiddenLayerBias, hiddenLayerSize, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(d_outLayer, outLayerWights, (sizeof(float) * HIDDENSIZE * OUTSIZE), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_outBias, outputLayerBias, outLayerSize, cudaMemcpyHostToDevice);
+
+    int test2;
+
+  
+
+    // for(int i = 0; i < epochs; i++) {
+
+    //     for(int j = 0; j < amountOfData; j++) {
+    //         int testPos = rand() % amountOfData;
+ 
+    //         if(testPos >= amountOfData) {
+    //             testPos = 0;
+    //         }
+
+    //         gpuFillInputLayer<<<1, INPUTSIZE>>>(d_input, d_input_layer, INPUTSIZE, testPos);
+    //         gpuActivateLayers<<<HIDDENSIZE, INPUTSIZE>>>(d_input_layer, d_hLayerOne, d_fWeights, d_fBias, INPUTSIZE, HIDDENSIZE);
+    //         gpuActivateLayers<<<OUTSIZE, HIDDENSIZE>>>(d_hLayerOne, d_outLayer, d_outWeights, d_outBias, INPUTSIZE, HIDDENSIZE);
+
+    //         cudaMemcpy(outLayer, d_outLayer, outLayerSize, cudaMemcpyDeviceToHost);
+
+    //         // printf("%d, \n", inputLayer);
+
+    //     }
+    //     printArray(outLayer, OUTSIZE);
+
+    // }
 
 
 
