@@ -2,6 +2,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
+#include "arrayUtils.h"
 #include "cpuNetwork.h"
 
 
@@ -27,7 +28,7 @@ float dSigmoid(float x) {
 void iniateWeigts(float * inArr, int size) {
     
     for(int i = 0; i < size; i++) {
-        inArr[i] = (((float)rand()/(float)RAND_MAX))/10;
+        inArr[i] = (((float)rand()/(float)RAND_MAX));
     }
 
 }
@@ -163,4 +164,42 @@ void testBackProp(float * curBias, float * deltaCur, float * curWeights, float *
             curWeights[j + i * prevSize] += learnRate * deltaCur[i] * prevLayer[j];
         }
     }  
+}
+
+void trainNetwork(float * inLayer, float * hLayerOne, float * hLayerTwo, float * outLayer, float * oneWeights, float * twoWeights, float * outWeights, float * oneBias, float * twoBias,
+                 float * outBias, float * input, float * correctInput, int amountOfData, int inSize, int hiddenSize, int outSize, int epochs, float learnRate) {
+    for(int i = 0; i < epochs; i++) {
+
+        for(int j = 0; j < amountOfData; j++) {
+            int randInputPos = rand() % amountOfData;
+            if(randInputPos > amountOfData) {
+                randInputPos = 0;
+            }
+
+            fillInputLayer(input, inLayer, inSize, randInputPos);
+
+            activateLayers(inLayer, hLayerOne, oneWeights, oneBias, inSize, hiddenSize);
+            activateLayers(hLayerOne, hLayerTwo, twoWeights, twoBias, hiddenSize, hiddenSize);
+            activateLayers(hLayerTwo, outLayer, outWeights, outBias, hiddenSize, outSize);
+
+            float deltaOut[outSize];
+            float deltaTwoHidden[hiddenSize];
+            float deltaOneHidden[hiddenSize];
+
+            outError(deltaOut, correctInput, outLayer, outSize, randInputPos);
+            hiddenError(deltaTwoHidden, deltaOut, hLayerTwo, outWeights, hiddenSize, outSize);
+            hiddenError(deltaOneHidden, deltaTwoHidden, hLayerOne, twoWeights, hiddenSize, hiddenSize);
+
+            backProp(outBias, deltaOut, outWeights, hLayerTwo, learnRate, outSize, hiddenSize);
+            backProp(twoBias, deltaTwoHidden, twoWeights, hLayerOne, learnRate, hiddenSize, hiddenSize);
+            backProp(oneBias, deltaOneHidden, oneWeights, inLayer, learnRate, hiddenSize, inSize);
+            
+
+        }
+        printArray(inLayer, (inSize));
+        printArray(outLayer, (outSize));
+
+        printf("\n");
+    }
+
 }

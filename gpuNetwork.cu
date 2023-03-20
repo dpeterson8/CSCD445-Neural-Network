@@ -1,4 +1,7 @@
+#include <stdio.h>
 #include <math.h>
+#include <stdlib.h>
+#include <time.h>
 
 #include "gpuNetwork.h"
 
@@ -7,24 +10,32 @@ __device__ float gpuSigmoid(float x) {
 }
 
 __global__ void gpuFillInputLayer(float * input, float * inputLayer, int inputSize, int position) {
-    int ix = blockDim.x * blockIdx.x + threadIdx.x;
+    int ix = (blockDim.x * blockIdx.x) + threadIdx.x;
     int iy = blockDim.y * blockIdx.y + threadIdx.y;
     int idx = (iy * (gridDim.x * blockDim.x)) + ix;
 
-    inputLayer[idx] = input[idx + inputSize * position];
+    inputLayer[ix] = input[ix + inputSize * position];
+    
     
 }
 
-// void gpuActivateLayers( float * inputLayer, float * nextLayer, float * nextWeights, float * nextBias, int inputSize, int nextSize) {
+__global__ void gpuActivateLayers( float * layers, float * nextLayer, float * nextWeights, float * nextBias, int inputSize, int nextSize) {
 
-//     for(int i = 0; i < nextSize; i++) {
-//         float result = nextBias[i];
+    if(threadIdx.x == 0) {
+        nextLayer[blockIdx.x] = 0;
 
-//         for(int j = 0; j < inputSize; j++) {
-//             result += inputLayer[j] * nextWeights[j + i * inputSize];
-//         }
+        nextLayer[blockIdx.x] += nextBias[blockIdx.x];
+    }
 
-//         nextLayer[i] = sigmoid(result);
-//     }
+    __syncthreads();
 
-// }
+    nextLayer[blockIdx.x] += nextWeights[threadIdx.x + blockDim.x * blockIdx.x] * layers[threadIdx.x];
+
+    __syncthreads();
+
+    if(threadIdx.x == 0) {
+        nextLayer[blockIdx.x] = gpuSigmoid(nextLayer[blockIdx.x]);
+    }
+
+    __syncthreads();
+}
