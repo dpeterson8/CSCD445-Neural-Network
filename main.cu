@@ -6,6 +6,7 @@
 #include "mnistFileUtils.h"
 #include "cpuNetwork.h"
 #include "arrayUtils.h"
+#include "timing.h"
 
 #include "gpuNetwork.h"
 
@@ -62,7 +63,7 @@ int main( int argc, char *argv[] ) {
 
 
     float lr = 0.4;
-    int epochs = 100000;
+    int epochs = 10000;
     static const int amountOfData = 8;
 
 
@@ -74,12 +75,30 @@ int main( int argc, char *argv[] ) {
     // iniate out layer weights and biases
     iniateWeigts(outLayerWights, (HIDDENSIZE * OUTSIZE));
     iniateWeigts(outputLayerBias, (OUTSIZE));
-
+ 
     if(*argv[1] == '1') {
+        float average_cpu_time = 0;
+        clock_t now, then;
+        int num_cpu_test = 3;
+        unsigned int sum = 0;
         
+        then = clock();
         trainNetwork(inputLayer, hiddenOneLayer, hiddenTwoLayer, outLayer, hiddenLayerWeights, hiddenTwoLayerWeights, outLayerWights, hiddenLayerBias,
-                    hiddenTwoLayerBias, outputLayerBias, orInput, inputCorrect, amountOfData, INPUTSIZE, HIDDENSIZE, OUTSIZE, epochs, lr);            
+                    hiddenTwoLayerBias, outputLayerBias, orInput, inputCorrect, amountOfData, INPUTSIZE, HIDDENSIZE, OUTSIZE, epochs, lr);           
+        now = clock();
+
+        float time = 0;
+        time = timeCost(then, now);
+
+        average_cpu_time += time;
+        average_cpu_time /= num_cpu_test;
+        printf(" done. CPU time cost in second: %f\n", average_cpu_time);
+
     } else {
+
+        cudaEvent_t launch_begin, launch_end;
+        cudaEventCreate(&launch_begin);
+        cudaEventCreate(&launch_end);
 
         float * d_input;
         float * d_correct;
@@ -127,6 +146,7 @@ int main( int argc, char *argv[] ) {
         cudaMemcpy(d_outWeights, outLayerWights, (sizeof(float) * HIDDENSIZE * OUTSIZE), cudaMemcpyHostToDevice);
         cudaMemcpy(d_outBias, outputLayerBias, outLayerSize, cudaMemcpyHostToDevice);
 
+        cudaEventRecord(launch_begin,0);
         for(int i = 0; i < epochs; i++) {
             shuffle(orInput, inputCorrect, amountOfData, INPUTSIZE);
             cudaMemcpy(d_input_layer, orInput, d_inputLayer_size * amountOfData, cudaMemcpyHostToDevice);
@@ -134,6 +154,15 @@ int main( int argc, char *argv[] ) {
             gpuTrainNetwork<<<1, 1>>>(d_input_layer, d_hLayerOne, d_outLayer, d_fWeights, d_outWeights, d_fBias, d_outBias, d_input, d_correct, amountOfData,INPUTSIZE, HIDDENSIZE, OUTSIZE, epochs, lr);    
             cudaDeviceSynchronize();
         }
+
+        cudaEventRecord(launch_end,0);
+        cudaEventSynchronize(launch_end);
+
+        // measure the time spent in the kernel
+        float time = 0;
+        cudaEventElapsedTime(&time, launch_begin, launch_end);
+
+        printf(" done! GPU time cost in second: %f\n", time / 1000);
 
         cudaFree(d_input);
         cudaFree(d_correct);
@@ -164,3 +193,56 @@ int main( int argc, char *argv[] ) {
     free(outputLayerBias);
 
 }
+
+//    printf("Timing simple GPU implementation… \n");
+//    // record a CUDA event immediately before and after the kernel launch
+//    cudaEventRecord(launch_begin,0);
+//    while( 1 )
+//    {
+    //     // block.x = block.x / 2;
+    //    reduce3<<<grid, block, tile_width * sizeof(float)>>>(d_in, d_out, num_in);
+    //    check_cuda_errors(__FILE__, __LINE__);
+    //    cudaDeviceSynchronize();
+
+    //    // if the number of local sum returned by kernel is greater than the threshold,
+    //    // we do reduction on GPU for these returned local sums for another pass,
+    //    // until, num_out < threshold
+    //    if(num_out >= THRESH)
+    //    {
+            
+    //        num_in = num_out;
+    //        num_out = ceil((float)num_out / tile_width);
+    //        grid.x = num_out; //change the grid dimension in x direction
+    //        //Swap d_in and d_out, so that in the next iteration d_out is used as input and d_in is the output.
+    //        temp = d_in;
+    //        d_in = d_out;
+    //        d_out = temp;
+    //     //    tile_width = tile_width / 2;
+    //     //    num_in = num_in / 2;
+    //    }
+    //    else
+    //    {
+    //        //copy the ouput of last lauch back to host,
+    //        cudaMemcpy(h_out, d_out, sizeof(float) * num_out, cudaMemcpyDeviceToHost);
+    //        break;
+    //    }
+    // }//end of while
+
+    // cudaEventRecord(launch_end,0);
+    // cudaEventSynchronize(launch_end);
+
+    // // measure the time spent in the kernel
+    // float time = 0;
+    // cudaEventElapsedTime(&time, launch_begin, launch_end);
+
+    // printf(" done! GPU time cost in second: %f\n", time / 1000);
+    // printf("The output from device is:");
+    // //if(shouldPrint)
+    // printArray(h_out, num_out);
+
+    // // deallocate device memory
+    // cudaFree(d_in);
+    // cudaFree(d_out);
+    // free(h_out);
+    // cudaEventDestroy(launch_begin);
+    // cudaEventDestroy(launch_end);
