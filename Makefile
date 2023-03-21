@@ -4,8 +4,8 @@ CC = g++
 GPUOBJS = main.o gpuNetwork.o 
 OBJS = cpuNetwork.o arrayUtils.o timing.o
 
-network:$(OBJS) $(GPUOBJS)
-	$(NVCC) -arch=sm_52 -rdc=true -lcudadevrt -o network $(OBJS) $(GPUOBJS)
+project:$(OBJS) $(GPUOBJS)
+	$(NVCC) -arch=sm_52 -rdc=true -lcudadevrt -o project $(OBJS) $(GPUOBJS)
 
 main.o: main.cu
 	$(NVCC) -c main.cu
@@ -25,4 +25,4 @@ timing.o: timing.c
 
 clean:
 	rm -f *.o
-	rm -f network
+	rm -f project
