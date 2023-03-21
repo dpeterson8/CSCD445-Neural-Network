@@ -21,14 +21,7 @@ void usage(){
 }
 
 int main( int argc, char *argv[] ) {
-    
-    // float * inputArr = (float *) malloc(sizeof(float) * 784 * 60000);
-    // float * correctInput = (float *) malloc(sizeof(float) * 60000);
-    // float * correctData = (float *) (malloc(sizeof(float) * 60000 * 10));
 
-    // getMnistTrain(inputArr, correctInput, correctData, 1);
-
-    // __time_t t;
 
     if(argc != 2) {
         usage();
@@ -57,14 +50,16 @@ int main( int argc, char *argv[] ) {
     float orInput[48] = { 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0,
                        0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0,
                        0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0};
+
     float inputCorrect[24] = {0.0,1.0,1.0,0.0,0.0,1.0,1.0,0.0,
                               0.0,1.0,1.0,0.0,0.0,1.0,1.0,0.0,
                               0.0,1.0,1.0,0.0,0.0,1.0,1.0,0.0}; 
 
 
+    int totalCorrect = 0;
     float lr = 0.4;
-    int epochs = 10000;
-    static const int amountOfData = 8;
+    int epochs = 1000;
+    static const int amountOfData = 24;
 
 
 
@@ -84,7 +79,7 @@ int main( int argc, char *argv[] ) {
         
         then = clock();
         trainNetwork(inputLayer, hiddenOneLayer, hiddenTwoLayer, outLayer, hiddenLayerWeights, hiddenTwoLayerWeights, outLayerWights, hiddenLayerBias,
-                    hiddenTwoLayerBias, outputLayerBias, orInput, inputCorrect, amountOfData, INPUTSIZE, HIDDENSIZE, OUTSIZE, epochs, lr);           
+                    hiddenTwoLayerBias, outputLayerBias, orInput, inputCorrect, amountOfData, INPUTSIZE, HIDDENSIZE, OUTSIZE, epochs, lr, totalCorrect);           
         now = clock();
 
         float time = 0;
@@ -118,7 +113,7 @@ int main( int argc, char *argv[] ) {
         float * d_outBias;
 
         float * d_deltaOut;
-
+        float * d_totalCorrecct;
         float * d_deltaOne; 
 
         int hiddenLayerSize = sizeof(float) * HIDDENSIZE;
@@ -138,7 +133,6 @@ int main( int argc, char *argv[] ) {
         cudaMalloc((void**)&d_outLayer, outLayerSize * amountOfData);    
         cudaMalloc((void**)&d_deltaOut, (sizeof(float) * OUTSIZE) * amountOfData);
         cudaMalloc((void**)&d_deltaOne, (sizeof(float) * HIDDENSIZE) * amountOfData);
-
         cudaMemcpy(d_input_layer, orInput, d_inputLayer_size * amountOfData, cudaMemcpyHostToDevice);
         cudaMemcpy(d_correct, inputCorrect, (sizeof(float) * OUTSIZE * amountOfData), cudaMemcpyHostToDevice);
         cudaMemcpy(d_fWeights, hiddenLayerWeights, hiddenLayerSize * INPUTSIZE, cudaMemcpyHostToDevice);
@@ -193,56 +187,3 @@ int main( int argc, char *argv[] ) {
     free(outputLayerBias);
 
 }
-
-//    printf("Timing simple GPU implementation… \n");
-//    // record a CUDA event immediately before and after the kernel launch
-//    cudaEventRecord(launch_begin,0);
-//    while( 1 )
-//    {
-    //     // block.x = block.x / 2;
-    //    reduce3<<<grid, block, tile_width * sizeof(float)>>>(d_in, d_out, num_in);
-    //    check_cuda_errors(__FILE__, __LINE__);
-    //    cudaDeviceSynchronize();
-
-    //    // if the number of local sum returned by kernel is greater than the threshold,
-    //    // we do reduction on GPU for these returned local sums for another pass,
-    //    // until, num_out < threshold
-    //    if(num_out >= THRESH)
-    //    {
-            
-    //        num_in = num_out;
-    //        num_out = ceil((float)num_out / tile_width);
-    //        grid.x = num_out; //change the grid dimension in x direction
-    //        //Swap d_in and d_out, so that in the next iteration d_out is used as input and d_in is the output.
-    //        temp = d_in;
-    //        d_in = d_out;
-    //        d_out = temp;
-    //     //    tile_width = tile_width / 2;
-    //     //    num_in = num_in / 2;
-    //    }
-    //    else
-    //    {
-    //        //copy the ouput of last lauch back to host,
-    //        cudaMemcpy(h_out, d_out, sizeof(float) * num_out, cudaMemcpyDeviceToHost);
-    //        break;
-    //    }
-    // }//end of while
-
-    // cudaEventRecord(launch_end,0);
-    // cudaEventSynchronize(launch_end);
-
-    // // measure the time spent in the kernel
-    // float time = 0;
-    // cudaEventElapsedTime(&time, launch_begin, launch_end);
-
-    // printf(" done! GPU time cost in second: %f\n", time / 1000);
-    // printf("The output from device is:");
-    // //if(shouldPrint)
-    // printArray(h_out, num_out);
-
-    // // deallocate device memory
-    // cudaFree(d_in);
-    // cudaFree(d_out);
-    // free(h_out);
-    // cudaEventDestroy(launch_begin);
-    // cudaEventDestroy(launch_end);

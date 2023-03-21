@@ -167,7 +167,7 @@ void testBackProp(float * curBias, float * deltaCur, float * curWeights, float *
 }
 
 void trainNetwork(float * inLayer, float * hLayerOne, float * hLayerTwo, float * outLayer, float * oneWeights, float * twoWeights, float * outWeights, float * oneBias, float * twoBias,
-                 float * outBias, float * input, float * correctInput, int amountOfData, int inSize, int hiddenSize, int outSize, int epochs, float learnRate) {
+                 float * outBias, float * input, float * correctInput, int amountOfData, int inSize, int hiddenSize, int outSize, int epochs, float learnRate, int total) {
     for(int i = 0; i < epochs; i++) {
 
         for(int j = 0; j < amountOfData; j++) {
@@ -197,12 +197,15 @@ void trainNetwork(float * inLayer, float * hLayerOne, float * hLayerTwo, float *
             backProp(twoBias, deltaTwoHidden, twoWeights, hLayerOne, learnRate, hiddenSize, hiddenSize);
             backProp(oneBias, deltaOneHidden, oneWeights, inLayer, learnRate, hiddenSize, inSize);
             
+            if((outLayer[0] > 0.6 && correctInput[inSize * randInputPos] > 0.6) || (outLayer[0]) < 0.6 && correctInput[inSize * randInputPos] < 0.6) {
+                total += 1 ;
+            }
 
         }
-        printArray(inLayer, (inSize));
-        printArray(outLayer, (outSize));
+        // printArray(inLayer, (inSize));
+        // printArray(outLayer, (outSize));
 
-        printf("\n");
     }
-
+        printf("Total Correct %d out of %d, ", total, epochs * amountOfData);
+        printf("\n");
 }

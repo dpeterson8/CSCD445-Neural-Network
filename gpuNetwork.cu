@@ -97,8 +97,8 @@ __global__ void gpuTrainNetwork(float * inLayer, float * hLayerOne, float * outL
     }
 
     for(int i = 0; i < outSize; i++) {
-            printf ("input: %f, %f ", inLayer[i * 2], inLayer[i * 2 + 1]);
-            printf("%f ", outLayer[i]);
+            printf ("Input: %f, %f ", inLayer[i * 2], inLayer[i * 2 + 1]);
+            printf("Output: %f ", outLayer[i]);
     }
     printf("\n");
 
