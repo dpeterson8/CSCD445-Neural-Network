@@ -3,64 +3,69 @@
 #include <stdlib.h>
 #include <time.h>
 #include <cuda.h>
-// #include "mnistFileUtils.h"
+#include "mnistFileUtils.h"
 #include "cpuNetwork.h"
 #include "arrayUtils.h"
 
 #include "gpuNetwork.h"
 
 int INPUTSIZE = 2;
-int HIDDENSIZE = 4;
+int HIDDENSIZE = 2;
 int OUTSIZE = 1;
 
-
-void testNetwork(int amountOfData, float * inputLayer, float * firstHidden, float * secondHidden, float * outLayer, float * firstWeights, float * secondWeights,
-            float * outWeights, float * firstBias, float * secondBias, float * outBias, float * input) {
-    
-    int testPos = rand() % amountOfData;
-    if(testPos >= amountOfData) {
-        testPos = 0;
-    }
-
-    fillInputLayer(input, inputLayer, INPUTSIZE, testPos);
-
-    activateLayers(inputLayer, firstHidden, firstWeights, firstBias, INPUTSIZE, HIDDENSIZE);
-    activateLayers(firstHidden, secondHidden, secondWeights, secondBias, HIDDENSIZE, HIDDENSIZE);
-    activateLayers(secondHidden, outLayer, outWeights, outBias, HIDDENSIZE, OUTSIZE);
+void usage(){
+    printf("./project 1\n");
+    printf("The only argument will determine whether the code si run using cpu or gpu side.\n");
+    printf("For cpu side './project 1' will cause the cpu side to run, anthing else will run gpu\n");
 }
 
-int main() {
+int main( int argc, char *argv[] ) {
+    
+    // float * inputArr = (float *) malloc(sizeof(float) * 784 * 60000);
+    // float * correctInput = (float *) malloc(sizeof(float) * 60000);
+    // float * correctData = (float *) (malloc(sizeof(float) * 60000 * 10));
+
+    // getMnistTrain(inputArr, correctInput, correctData, 1);
+
     // __time_t t;
+
+    if(argc != 2) {
+        usage();
+        exit(1);
+    }
+    
     srand((unsigned) time(NULL));
     
-    float inputLayer[INPUTSIZE];
-    float hiddenOneLayer[HIDDENSIZE];
-    float hiddenTwoLayer[HIDDENSIZE];
-    float outLayer[OUTSIZE];
+    float * inputLayer = (float *) malloc(sizeof(float) * INPUTSIZE);
+    float * hiddenOneLayer = (float *) malloc(sizeof(float) * HIDDENSIZE);
+    float * hiddenTwoLayer = (float *) malloc(sizeof(float) * HIDDENSIZE);
+    float * outLayer = (float *) malloc(sizeof(float) * OUTSIZE);
 
-    float layers[INPUTSIZE + (HIDDENSIZE * 2) + OUTSIZE];
-    float weights[(INPUTSIZE * HIDDENSIZE * 2) + (OUTSIZE * HIDDENSIZE)];
-    float biases[(HIDDENSIZE * 2) + OUTSIZE];
+    float * layers = (float *) malloc(sizeof(float) * INPUTSIZE + (HIDDENSIZE * 2) + OUTSIZE);
+    float * weights = (float *) malloc(sizeof(float) * (INPUTSIZE * HIDDENSIZE * 2) + (OUTSIZE * HIDDENSIZE));
+    float * biases = (float *) malloc(sizeof(float) * (HIDDENSIZE * 2 + OUTSIZE));
 
-    float hiddenLayerWeights[INPUTSIZE * HIDDENSIZE];
-    float hiddenTwoLayerWeights[INPUTSIZE * HIDDENSIZE];
-    float outLayerWights[HIDDENSIZE * OUTSIZE];
+    float * hiddenLayerWeights = (float *) malloc(sizeof(float) * OUTSIZE * INPUTSIZE) ;
+    float * hiddenTwoLayerWeights = (float *) malloc(sizeof(float) * HIDDENSIZE * 2);
+    float * outLayerWights = (float *) malloc(sizeof(float) * OUTSIZE * HIDDENSIZE);
 
-    float hiddenLayerBias[HIDDENSIZE];
-    float hiddenTwoLayerBias[HIDDENSIZE];
-    float outputLayerBias[OUTSIZE];
+    float * hiddenLayerBias = (float *) malloc(sizeof(float) * HIDDENSIZE);
+    float * hiddenTwoLayerBias = (float *) malloc(sizeof(float) * HIDDENSIZE);
+    float * outputLayerBias = (float *) malloc(sizeof(float) * OUTSIZE);
 
-    float test[16] = { 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0};
-    float inputCorrect[8] = {0.0,1.0,1.0,0.0,0.0,1.0,1.0,0.0}; 
+    float orInput[48] = { 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0,
+                       0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0,
+                       0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0};
+    float inputCorrect[24] = {0.0,1.0,1.0,0.0,0.0,1.0,1.0,0.0,
+                              0.0,1.0,1.0,0.0,0.0,1.0,1.0,0.0,
+                              0.0,1.0,1.0,0.0,0.0,1.0,1.0,0.0}; 
 
 
-    int totalCorrectPasses = 0;
     float lr = 0.4;
-    int epochs = 200000;
+    int epochs = 100000;
     static const int amountOfData = 8;
 
-    // iniateWeigts(weights, (INPUTSIZE * HIDDENSIZE * 2) + (OUTSIZE * HIDDENSIZE));
-    // iniateWeigts(biases, (HIDDENSIZE * 2) + OUTSIZE);
+
 
     // iniate hidden layer weights and biases
     iniateWeigts(hiddenLayerWeights, (INPUTSIZE * HIDDENSIZE));
@@ -70,245 +75,92 @@ int main() {
     iniateWeigts(outLayerWights, (HIDDENSIZE * OUTSIZE));
     iniateWeigts(outputLayerBias, (OUTSIZE));
 
-    float * d_input;
-    float * d_correct;
-    size_t d_input_size = sizeof(float) * amountOfData;
+    if(*argv[1] == '1') {
+        
+        trainNetwork(inputLayer, hiddenOneLayer, hiddenTwoLayer, outLayer, hiddenLayerWeights, hiddenTwoLayerWeights, outLayerWights, hiddenLayerBias,
+                    hiddenTwoLayerBias, outputLayerBias, orInput, inputCorrect, amountOfData, INPUTSIZE, HIDDENSIZE, OUTSIZE, epochs, lr);            
+    } else {
 
-    float * d_input_layer;
-    size_t d_inputLayer_size = sizeof(float) * INPUTSIZE;
+        float * d_input;
+        float * d_correct;
+        size_t d_input_size = sizeof(float) * amountOfData;
 
-    float * d_hLayerOne;
-    float * d_hLayerTwo;
-    float * d_outLayer;
+        float * d_input_layer;
+        size_t d_inputLayer_size = sizeof(float) * INPUTSIZE;
 
-    float * d_fWeights;
-    float * d_outWeights;
+        float * d_hLayerOne;
+        float * d_hLayerTwo;
+        float * d_outLayer;
 
-    float * d_fBias;
-    float * d_outBias;
+        float * d_fWeights;
+        float * d_outWeights;
 
-    float * d_deltaOut;
+        float * d_fBias;
+        float * d_outBias;
 
-    float * d_deltaOne;
+        float * d_deltaOut;
 
-    int hiddenLayerSize = sizeof(float) * HIDDENSIZE;
-    int outLayerSize = sizeof(float) * OUTSIZE;
+        float * d_deltaOne; 
 
-    int hiddenWeightSize = sizeof(float) * HIDDENSIZE * INPUTSIZE;
+        int hiddenLayerSize = sizeof(float) * HIDDENSIZE;
+        int outLayerSize = sizeof(float) * OUTSIZE;
 
-    cudaMalloc((void**)&d_input, d_input_size);
-    cudaMalloc((void**)&d_correct, (sizeof(float) * OUTSIZE * amountOfData));
-    cudaMalloc((void**)&d_input_layer, d_inputLayer_size * amountOfData);
-    cudaMalloc((void**)&d_fWeights, hiddenWeightSize);
-    cudaMalloc((void**)&d_fBias, (sizeof(float) * HIDDENSIZE));
-    cudaMalloc((void**)&d_hLayerOne, hiddenLayerSize * amountOfData);
-    cudaMalloc((void**)&d_hLayerTwo, hiddenLayerSize);
-    cudaMalloc((void**)&d_outWeights, (sizeof(float) * HIDDENSIZE * OUTSIZE));
-    cudaMalloc((void**)&d_outBias, (sizeof(float) * OUTSIZE));
-    cudaMalloc((void**)&d_outLayer, outLayerSize * amountOfData);    
-    cudaMalloc((void**)&d_deltaOut, (sizeof(float) * OUTSIZE) * amountOfData);
-    cudaMalloc((void**)&d_deltaOne, (sizeof(float) * HIDDENSIZE) * amountOfData);
+        int hiddenWeightSize = sizeof(float) * HIDDENSIZE * INPUTSIZE;
 
-    cudaMemcpy(d_input_layer, test, d_inputLayer_size * amountOfData, cudaMemcpyHostToDevice);
-    cudaMemcpy(d_correct, inputCorrect, (sizeof(float) * OUTSIZE * amountOfData), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_fWeights, hiddenLayerWeights, hiddenLayerSize * INPUTSIZE, cudaMemcpyHostToDevice);
-    cudaMemcpy(d_fBias, hiddenLayerBias, hiddenLayerSize, cudaMemcpyHostToDevice);
-    cudaMemcpy(d_outWeights, outLayerWights, (sizeof(float) * HIDDENSIZE * OUTSIZE), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_outBias, outputLayerBias, outLayerSize, cudaMemcpyHostToDevice);
+        cudaMalloc((void**)&d_input, d_input_size);
+        cudaMalloc((void**)&d_correct, (sizeof(float) * OUTSIZE * amountOfData));
+        cudaMalloc((void**)&d_input_layer, d_inputLayer_size * amountOfData);
+        cudaMalloc((void**)&d_fWeights, hiddenWeightSize);
+        cudaMalloc((void**)&d_fBias, (sizeof(float) * HIDDENSIZE));
+        cudaMalloc((void**)&d_hLayerOne, hiddenLayerSize * amountOfData);
+        cudaMalloc((void**)&d_hLayerTwo, hiddenLayerSize);
+        cudaMalloc((void**)&d_outWeights, (sizeof(float) * HIDDENSIZE * OUTSIZE));
+        cudaMalloc((void**)&d_outBias, (sizeof(float) * OUTSIZE));
+        cudaMalloc((void**)&d_outLayer, outLayerSize * amountOfData);    
+        cudaMalloc((void**)&d_deltaOut, (sizeof(float) * OUTSIZE) * amountOfData);
+        cudaMalloc((void**)&d_deltaOne, (sizeof(float) * HIDDENSIZE) * amountOfData);
 
-    int test2;
+        cudaMemcpy(d_input_layer, orInput, d_inputLayer_size * amountOfData, cudaMemcpyHostToDevice);
+        cudaMemcpy(d_correct, inputCorrect, (sizeof(float) * OUTSIZE * amountOfData), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_fWeights, hiddenLayerWeights, hiddenLayerSize * INPUTSIZE, cudaMemcpyHostToDevice);
+        cudaMemcpy(d_fBias, hiddenLayerBias, hiddenLayerSize, cudaMemcpyHostToDevice);
+        cudaMemcpy(d_outWeights, outLayerWights, (sizeof(float) * HIDDENSIZE * OUTSIZE), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_outBias, outputLayerBias, outLayerSize, cudaMemcpyHostToDevice);
 
-    float deltaOut[OUTSIZE];
-    float deltaTwoHidden[HIDDENSIZE];
-    float deltaOneHidden[HIDDENSIZE];
+        for(int i = 0; i < epochs; i++) {
+            shuffle(orInput, inputCorrect, amountOfData, INPUTSIZE);
+            cudaMemcpy(d_input_layer, orInput, d_inputLayer_size * amountOfData, cudaMemcpyHostToDevice);
+            cudaMemcpy(d_correct, inputCorrect, (sizeof(float) * OUTSIZE * amountOfData), cudaMemcpyHostToDevice);
+            gpuTrainNetwork<<<1, 1>>>(d_input_layer, d_hLayerOne, d_outLayer, d_fWeights, d_outWeights, d_fBias, d_outBias, d_input, d_correct, amountOfData,INPUTSIZE, HIDDENSIZE, OUTSIZE, epochs, lr);    
+            cudaDeviceSynchronize();
+        }
 
+        cudaFree(d_input);
+        cudaFree(d_correct);
+        cudaFree(d_input_layer);
+        cudaFree(d_fWeights);
+        cudaFree(d_fBias);
+        cudaFree(d_hLayerOne);
+        cudaFree(d_hLayerTwo);
+        cudaFree(d_outWeights);
+        cudaFree(d_outBias);
+        cudaFree(d_outLayer);
+        cudaFree(d_deltaOut);
+        cudaFree(d_deltaOne);
 
-    for(int i = 0; i < epochs; i++) {
-        gpuTrainNetwork<<<1, 1>>>(d_input_layer, d_hLayerOne, d_outLayer, d_fWeights, d_outWeights, d_fBias, d_outBias, d_input, d_correct, amountOfData,INPUTSIZE, HIDDENSIZE, OUTSIZE, epochs, lr);    
-        cudaDeviceSynchronize();
     }
 
-
-    // trainNetwork(inputLayer, hiddenOneLayer, hiddenTwoLayer, outLayer, hiddenLayerWeights, hiddenTwoLayerWeights, outLayerWights, hiddenLayerBias,
-    //              hiddenTwoLayerBias, outputLayerBias, test, inputCorrect, amountOfData, INPUTSIZE, HIDDENSIZE, OUTSIZE, epochs, lr);    
-
-
-  
-
-    // for(int i = 0; i < epochs; i++) {
-
-    //     // for(int j = 0; j < amountOfData; j++) {
-    //     //     int testPos = rand() % amountOfData;
- 
-    //     //     if(testPos >= amountOfData) {
-    //     //         testPos = 0;
-    //     //     }
-
-    //     //     gpuFillInputLayer<<<1, INPUTSIZE>>>(d_input, d_input_layer, INPUTSIZE, testPos);
-
-    //     //     gpuActivateLayers<<<HIDDENSIZE, INPUTSIZE>>>(d_input_layer, d_hLayerOne, d_fWeights, d_fBias, INPUTSIZE, HIDDENSIZE);
-    //     //     gpuActivateLayers<<<OUTSIZE, HIDDENSIZE>>>(d_hLayerOne, d_outLayer, d_outWeights, d_outBias, INPUTSIZE, HIDDENSIZE);
-
-    //     //     gpuOutError<<<1, OUTSIZE>>>(d_deltaOut, d_correct, d_outLayer, OUTSIZE, testPos);
-    //     //     gpuHiddenError<<<HIDDENSIZE, OUTSIZE>>>(d_deltaOne, d_deltaOut, d_hLayerOne, d_outWeights, HIDDENSIZE, OUTSIZE);
-
-    //     //     gpuBackProp<<<1, OUTSIZE>>>(d_outBias, d_deltaOut, d_outWeights, d_hLayerOne, lr, OUTSIZE, HIDDENSIZE);
-    //     //     gpuBackProp<<<1, HIDDENSIZE>>>(d_fBias, d_deltaOne, d_fWeights, d_input_layer, lr, HIDDENSIZE, INPUTSIZE);
-    //     //     // cudaDeviceSynchronize();
-
-    //     //     // printf("%d, \n", inputLayer);
-
-    //     // }
-    //     // cudaMemcpy(hiddenOneLayer, d_hLayerOne, hiddenLayerSize, cudaMemcpyDeviceToHost);
-    //     // cudaMemcpy(outLayer, d_outLayer, outLayerSize, cudaMemcpyDeviceToHost);
-    //     // cudaMemcpy(deltaOut, d_deltaOut, outLayerSize, cudaMemcpyDeviceToHost);
-    //     // cudaMemcpy(inputLayer, d_input_layer, d_inputLayer_size, cudaMemcpyDeviceToHost);
-    //     // printArray(deltaOut, outLayerSize);
-    //     // // printf(", Output: ");
-    //     // // printArray(outLayer, OUTSIZE);
-    //     // printf("\n");
-    // }
-
-
-        //     cudaMemcpy(outLayer, d_outLayer, outLayerSize, cudaMemcpyDeviceToHost);
-        // cudaMemcpy(inputLayer, d_input_layer, d_inputLayer_size, cudaMemcpyDeviceToHost);
-        // printArray(inputLayer, INPUTSIZE);
-        // printf(", Output: ");
-        // printArray(outLayer, OUTSIZE);
-        // printf("\n");
+    free(inputLayer);
+    free(hiddenOneLayer);
+    free(hiddenTwoLayer);
+    free(outLayer);
+    free(layers);
+    free(weights);
+    free(biases);
+    free(hiddenLayerWeights);
+    free(hiddenTwoLayerWeights);
+    free(hiddenLayerBias);
+    free(hiddenTwoLayerBias);
+    free(outputLayerBias);
 
 }
-
-// int main() {
-//     __time_t t;
-//     srand((unsigned) time(NULL));
-
-//     float * inputArr = (float *) malloc(sizeof(float) * 784 * 60000);
-//     float * correctInput = (float *) malloc(sizeof(float) * 60000);
-//     float * correctData = (float *) (malloc(sizeof(float) * 60000 * 10));
-
-//     getMnistTrain(inputArr, correctInput, correctData, 1);
-    
-//     float inputLayer[INPUTSIZE];
-//     float hiddenOneLayer[HIDDENSIZE];
-//     float hiddenTwoLayer[HIDDENSIZE];
-//     float outLayer[OUTSIZE];
-
-//     float layers[INPUTSIZE + (HIDDENSIZE * 2) + OUTSIZE];
-//     float weights[(INPUTSIZE * HIDDENSIZE * 2) + (OUTSIZE * HIDDENSIZE)];
-//     float biases[(HIDDENSIZE * 2) + OUTSIZE];
-
-//     float hiddenLayerWeights[INPUTSIZE * HIDDENSIZE];
-//     float hiddenTwoLayerWeights[INPUTSIZE * HIDDENSIZE];
-//     float outLayerWights[HIDDENSIZE * OUTSIZE];
-
-//     float hiddenLayerBias[HIDDENSIZE];
-//     float hiddenTwoLayerBias[HIDDENSIZE];
-//     float outputLayerBias[OUTSIZE];
-
-//     float test[16] = { 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0};
-//     float inputCorrect[8] = {0.0,1.0,1.0,0.0,0.0,1.0,1.0,0.0}; 
-
-
-//     int totalCorrectPasses = 0;
-//     float lr = 0.3;
-//     int epochs = 30000;
-//     static const int amountOfData = 8;
-
-//     // iniateWeigts(weights, (INPUTSIZE * HIDDENSIZE * 2) + (OUTSIZE * HIDDENSIZE));
-//     // iniateWeigts(biases, (HIDDENSIZE * 2) + OUTSIZE);
-
-//     // iniate hidden layer weights and biases
-//     iniateWeigts(hiddenLayerWeights, (INPUTSIZE * HIDDENSIZE));
-//     iniateWeigts(hiddenLayerBias, (HIDDENSIZE));
-
-//     // iniate out layer weights and biases
-//     iniateWeigts(outLayerWights, (HIDDENSIZE * OUTSIZE));
-//     iniateWeigts(outputLayerBias, (OUTSIZE));
-
-//     float * d_input;
-//     size_t d_input_size = sizeof(float) * INPUTSIZE * amountOfData;
-//     cudaMemcpy(d_input, test, d_input_size, cudaMemcpyHostToDevice);
-//     float * d_layer = malloc();
-//     size_t d_layer_size = sizeof(float) * (INPUTSIZE + (HIDDENSIZE * 2) + OUTSIZE);
-// //     float * d_weights;
-//     float * d_biases;
-//     cudaMalloc((void**)&d_input, d_input_size);
-//     cudaMalloc((void**)&d_layer, d_layer_size);
-
-
-//     int test2;
-    // cudaMemcpy(d_layer, layers, d_layer_size, cudaMemcpyHostToDevice);
-
-    
-//     for(int i = 0; i < epochs; i++) {
-//         totalCorrectPasses = 0;
-//         // int testPos = rand() % amountOfData;
-//         // randomizeArray(inputArr, correctData, 60000);
-//         for(int j = 0; j < amountOfData; j++) {
-//             int testPos = rand() % amountOfData;
-//             // int testPos = j;
-//             if(testPos >= amountOfData) {
-//                 testPos = 0;
-//             }
-
-//             // printf("Hello, ");
-//             // gpuFillInputLayer<<<1, INPUTSIZE>>>(d_input, d_layer, INPUTSIZE, testPos);
-//             // cudaDeviceSynchronize();
-//             fillInputLayer(test, inputLayer, INPUTSIZE, testPos);
-//             // cudaMemcpy(layers, d_layer, d_layer_size, cudaMemcpyDeviceToHost);
-//             // printArray(layers, (INPUTSIZE));
-
-//             activateLayers(inputLayer, hiddenOneLayer, hiddenLayerWeights, hiddenLayerBias, INPUTSIZE, HIDDENSIZE);
-//             activateLayers(hiddenOneLayer, hiddenTwoLayer, hiddenTwoLayerWeights, hiddenTwoLayerBias, HIDDENSIZE, HIDDENSIZE);
-//             activateLayers(hiddenTwoLayer, outLayer, outLayerWights, outputLayerBias, HIDDENSIZE, OUTSIZE);
-
-//             // testNetwork(amountOfData, inputLayer, hiddenOneLayer, hiddenTwoLayer, outLayer, hiddenLayerWeights, hiddenTwoLayerWeights, outLayerWights,
-//             //                     hiddenLayerBias, hiddenTwoLayerBias, outputLayerBias, test );
-
-//             float deltaOut[OUTSIZE];
-//             float deltaTwoHidden[HIDDENSIZE];
-//             float deltaOneHidden[HIDDENSIZE];
-
-
-//             outError(deltaOut, inputCorrect, outLayer, OUTSIZE, testPos);
-//             hiddenError(deltaTwoHidden, deltaOut, hiddenTwoLayer, outLayerWights, HIDDENSIZE, OUTSIZE);
-//             hiddenError(deltaOneHidden, deltaTwoHidden, hiddenOneLayer, hiddenTwoLayerWeights, HIDDENSIZE, HIDDENSIZE);
-
-//             backProp(outputLayerBias, deltaOut, outLayerWights, hiddenTwoLayer, lr, OUTSIZE, HIDDENSIZE);
-//             backProp(hiddenTwoLayer, deltaTwoHidden, hiddenTwoLayerWeights, hiddenOneLayer, lr, HIDDENSIZE, HIDDENSIZE);
-//             backProp(hiddenLayerBias, deltaOneHidden, hiddenLayerWeights, inputLayer, lr, HIDDENSIZE, INPUTSIZE);
-            
-//             test2 = testPos;
-
-//             // totalCorrect(outLayer, inputCorrect, totalCorrectPasses, OUTSIZE);
-//         }
-
-//         // printf("\n");
-
-//         printArray(inputLayer, (INPUTSIZE));
-//         printArray(outLayer, (OUTSIZE));
-//         printf(" Total: %d", totalCorrectPasses);
-//         // double acc = (totalCorrect/(epochs*amountOfData));
-//         // printf(" Accuracy: %f", acc);
-//         // printf("\n");
-//         // printArray(correctData + (test2*10), OUTSIZE);
-//         // for(int z = 0; z < INPUTSIZE; z++) {
-//         //     if(z % 28 == 0) { printf("\n"); }
-//         //     printf("%d ", (int)inputLayer[z]);
-//         // }
-//         printf("\n");
-
-//     }
-
-//     // trainNetwork(layers, weights, biases, test, inputCorrect, amountOfData, INPUTSIZE, HIDDENSIZE, OUTSIZE, epochs, lr);
-//     free(inputArr);
-//     free(correctInput);
-
-// }
-
-
-
-
-
-

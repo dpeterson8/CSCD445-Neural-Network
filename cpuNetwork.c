@@ -171,7 +171,8 @@ void trainNetwork(float * inLayer, float * hLayerOne, float * hLayerTwo, float *
     for(int i = 0; i < epochs; i++) {
 
         for(int j = 0; j < amountOfData; j++) {
-            int randInputPos = rand() % amountOfData;
+            shuffle(input, correctInput, amountOfData, inSize);
+            int randInputPos = j; // rand() % amountOfData;
             if(randInputPos > amountOfData) {
                 randInputPos = 0;
             }
