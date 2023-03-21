@@ -5,13 +5,13 @@ GPUOBJS = main.o gpuNetwork.o
 OBJS = cpuNetwork.o arrayUtils.o
 
 network:$(OBJS) $(GPUOBJS)
-	$(NVCC) -arch=sm_52 -o network $(OBJS) $(GPUOBJS)
+	$(NVCC) -arch=sm_52 -rdc=true -lcudadevrt -o network $(OBJS) $(GPUOBJS)
 
 main.o: main.cu
 	$(NVCC) -c main.cu
 
 gpuNetwork.o: gpuNetwork.cu
-	$(NVCC) -arch=sm_52 -c gpuNetwork.cu
+	$(NVCC) -arch=sm_52 -rdc=true -lcudadevrt -c gpuNetwork.cu
 
 cpuNetwork.o: cpuNetwork.c 
 	$(CC) -c cpuNetwork.c

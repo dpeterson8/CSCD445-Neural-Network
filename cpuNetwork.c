@@ -190,6 +190,8 @@ void trainNetwork(float * inLayer, float * hLayerOne, float * hLayerTwo, float *
             hiddenError(deltaTwoHidden, deltaOut, hLayerTwo, outWeights, hiddenSize, outSize);
             hiddenError(deltaOneHidden, deltaTwoHidden, hLayerOne, twoWeights, hiddenSize, hiddenSize);
 
+            // printArray(deltaOut, outSize);
+
             backProp(outBias, deltaOut, outWeights, hLayerTwo, learnRate, outSize, hiddenSize);
             backProp(twoBias, deltaTwoHidden, twoWeights, hLayerOne, learnRate, hiddenSize, hiddenSize);
             backProp(oneBias, deltaOneHidden, oneWeights, inLayer, learnRate, hiddenSize, inSize);
