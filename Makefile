@@ -2,7 +2,7 @@ NVCC = /bin/nvcc
 CC = g++
 
 GPUOBJS = main.o gpuNetwork.o 
-OBJS = cpuNetwork.o arrayUtils.o mnistFileUtils.o timing.o
+OBJS = cpuNetwork.o arrayUtils.o timing.o
 
 network:$(OBJS) $(GPUOBJS)
 	$(NVCC) -arch=sm_52 -rdc=true -lcudadevrt -o network $(OBJS) $(GPUOBJS)
@@ -18,10 +18,6 @@ cpuNetwork.o: cpuNetwork.c
 
 arrayUtils.o: arrayUtils.c
 	$(CC) -c arrayUtils.c
-
-mnistFileUtils.o: mnistFileUtils.c
-	$(CC) -c mnistFileUtils.c
-
 	
 timing.o: timing.c
 	$(CC) -c timing.c

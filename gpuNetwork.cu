@@ -63,7 +63,7 @@ __global__ void kBackProp(float * curBias, float * deltaCur, float * curWeights,
 }
 
 __global__ void gpuTrainNetwork(float * inLayer, float * hLayerOne, float * outLayer, float * oneWeights, float * outWeights, float * oneBias,
-                float * outBias, float * input, float * correctInput, int amountOfData, int inSize, int hiddenSize, int outSize, int epochs, float learnRate) {
+                float * outBias, float * input, float * correctInput, int amountOfData, int inSize, int hiddenSize, int outSize, int epochs, float learnRate, float * totalCorrect) {
 
     cudaDeviceSynchronize();
     kActivate<<<1, amountOfData>>> (inLayer, hLayerOne, oneWeights, oneBias, inSize, hiddenSize);
@@ -94,13 +94,18 @@ __global__ void gpuTrainNetwork(float * inLayer, float * hLayerOne, float * outL
                 oneWeights[j + i * inSize] = oneWeights[j + i * inSize] - (learnRate * deltaOne[i + (z*hiddenSize)]) * inLayer[j + (z*inSize)];
             }
         } 
-    }
 
-    for(int i = 0; i < outSize; i++) {
-            printf ("Input: %f, %f ", inLayer[i * 2], inLayer[i * 2 + 1]);
-            printf("Output: %f ", outLayer[i]);
+        if(roundf(outLayer[z * outSize]) == correctInput[z * outSize]) {
+            totalCorrect[0]++;
+        }
     }
-    printf("\n");
+    
+
+    // for(int i = 0; i < outSize; i++) {
+    //         printf ("Input: %f, %f ", inLayer[i * 2], inLayer[i * 2 + 1]);
+    //         printf("Output: %f ", outLayer[i]);
+    // }
+    // printf("\n");
 
     
 }

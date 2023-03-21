@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <time.h>
 #include <cuda.h>
-#include "mnistFileUtils.h"
 #include "cpuNetwork.h"
 #include "arrayUtils.h"
 #include "timing.h"
@@ -15,18 +14,24 @@ int HIDDENSIZE = 2;
 int OUTSIZE = 1;
 
 void usage(){
-    printf("./project 1\n");
-    printf("The only argument will determine whether the code si run using cpu or gpu side.\n");
-    printf("For cpu side './project 1' will cause the cpu side to run, anthing else will run gpu\n");
+    printf("./project arg1 arg2\n");
+    printf("The first argument will determine whether the code si run using cpu or gpu side.\n");
+    printf("For cpu side './project 1' will cause the cpu side to run, anthing else will run gpu\n");\
+    printf("arg2 will be the number of epochs the network will train with\n");
 }
 
 int main( int argc, char *argv[] ) {
 
 
-    if(argc != 2) {
+    if(!(argc == 2 || argc == 3)) {
         usage();
         exit(1);
     }
+
+    int epochs = 15000;
+    if(argv[2] != NULL) {
+        epochs = atoi(argv[2]);
+    } 
     
     srand((unsigned) time(NULL));
     
@@ -55,10 +60,9 @@ int main( int argc, char *argv[] ) {
                               0.0,1.0,1.0,0.0,0.0,1.0,1.0,0.0,
                               0.0,1.0,1.0,0.0,0.0,1.0,1.0,0.0}; 
 
-
+    float * gpuTotalCorrect =(float *) malloc(sizeof(float));
     int totalCorrect = 0;
     float lr = 0.4;
-    int epochs = 1000;
     static const int amountOfData = 24;
 
 
@@ -113,7 +117,7 @@ int main( int argc, char *argv[] ) {
         float * d_outBias;
 
         float * d_deltaOut;
-        float * d_totalCorrecct;
+        float * d_totalCorrect;
         float * d_deltaOne; 
 
         int hiddenLayerSize = sizeof(float) * HIDDENSIZE;
@@ -133,6 +137,7 @@ int main( int argc, char *argv[] ) {
         cudaMalloc((void**)&d_outLayer, outLayerSize * amountOfData);    
         cudaMalloc((void**)&d_deltaOut, (sizeof(float) * OUTSIZE) * amountOfData);
         cudaMalloc((void**)&d_deltaOne, (sizeof(float) * HIDDENSIZE) * amountOfData);
+        cudaMalloc((void**)&d_totalCorrect, (sizeof(float)));
         cudaMemcpy(d_input_layer, orInput, d_inputLayer_size * amountOfData, cudaMemcpyHostToDevice);
         cudaMemcpy(d_correct, inputCorrect, (sizeof(float) * OUTSIZE * amountOfData), cudaMemcpyHostToDevice);
         cudaMemcpy(d_fWeights, hiddenLayerWeights, hiddenLayerSize * INPUTSIZE, cudaMemcpyHostToDevice);
@@ -145,9 +150,13 @@ int main( int argc, char *argv[] ) {
             shuffle(orInput, inputCorrect, amountOfData, INPUTSIZE);
             cudaMemcpy(d_input_layer, orInput, d_inputLayer_size * amountOfData, cudaMemcpyHostToDevice);
             cudaMemcpy(d_correct, inputCorrect, (sizeof(float) * OUTSIZE * amountOfData), cudaMemcpyHostToDevice);
-            gpuTrainNetwork<<<1, 1>>>(d_input_layer, d_hLayerOne, d_outLayer, d_fWeights, d_outWeights, d_fBias, d_outBias, d_input, d_correct, amountOfData,INPUTSIZE, HIDDENSIZE, OUTSIZE, epochs, lr);    
+            gpuTrainNetwork<<<1, 1>>>(d_input_layer, d_hLayerOne, d_outLayer, d_fWeights, d_outWeights, d_fBias, d_outBias, d_input, d_correct, amountOfData,INPUTSIZE, HIDDENSIZE, OUTSIZE, epochs, lr, d_totalCorrect);    
             cudaDeviceSynchronize();
         }
+
+        cudaMemcpy(gpuTotalCorrect, d_totalCorrect, (sizeof(float)), cudaMemcpyDeviceToHost);
+
+        printf("Total correct: %d , Out of: %d\n", (int)gpuTotalCorrect[0], (int)(amountOfData*epochs));
 
         cudaEventRecord(launch_end,0);
         cudaEventSynchronize(launch_end);
